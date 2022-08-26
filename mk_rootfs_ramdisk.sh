@@ -1,18 +1,8 @@
 #!/bin/bash
 set -x
 
-rm -f rootfs.busybox.qcow2
-qemu-img create -f qcow2 rootfs.busybox.qcow2 4M
-if [[ ! -e /dev/nbd0 ]]; then
-  sudo modprobe nbd max_part=8
-fi
-sudo qemu-nbd -d /dev/nbd0
-sudo qemu-nbd --connect=/dev/nbd0 ./rootfs.busybox.qcow2
-sudo mkfs.ext4 /dev/nbd0
-
 sudo rm -rf ./rootfs_tmp
 mkdir rootfs_tmp
-sudo mount /dev/nbd0 ./rootfs_tmp
 
 sudo cp -r _install/* ./rootfs_tmp
 
@@ -55,10 +45,11 @@ mdev -s
 EOF
 sudo chmod 777 rootfs_tmp/etc/init.d/rcS
 
-sudo umount ./rootfs_tmp
-rm -rf ./rootfs_tmp
-sudo qemu-nbd -d /dev/nbd0
+cd rootfs_tmp
+sudo find . -print0 | cpio --null -ov --format=newc > ../rootfs.busybox.cpio
+cd ..
 
+sudo rm -rf rootfs_tmp
 
 ME=$(whoami)
-sudo chown ${ME} ./rootfs.busybox.qcow2
+sudo chown ${ME} ./rootfs.busybox.cpio
